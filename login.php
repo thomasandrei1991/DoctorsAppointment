@@ -58,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <img src="aventus_logo.png" height="150px" width="160px">
+    <div style="text-align: center; margin-top: 70px; margin-bottom: 20px;">
+        <img src="aventus_logo.png" height="150px" width="160px">
+    </div>
     <div class="login-container">
         <h2>Login to Aventus Clinic</h2>
         <?php if ($error): ?>
