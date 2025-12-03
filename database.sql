@@ -139,6 +139,10 @@ INSERT INTO patients (user_id, date_of_birth, gender, address, id_type, id_numbe
 -- Create indexes for better performance
 CREATE INDEX idx_appointments_date ON appointments(appointment_date);
 CREATE INDEX idx_appointments_status ON appointments(status);
+CREATE INDEX idx_appointments_patient ON appointments(patient_id);
+CREATE INDEX idx_appointments_doctor ON appointments(doctor_id);
+CREATE INDEX idx_patients_user ON patients(user_id);
+CREATE INDEX idx_doctors_user ON doctors(user_id);
 CREATE INDEX idx_messages_sender ON messages(sender_id);
 CREATE INDEX idx_messages_receiver ON messages(receiver_id);
 CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);

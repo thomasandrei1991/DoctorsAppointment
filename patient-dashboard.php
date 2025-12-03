@@ -63,7 +63,6 @@ $unread_messages = $conn->query("SELECT COUNT(*) as count FROM messages WHERE re
             <nav>
                 <a href="patient-dashboard.php">Dashboard</a>
                 <a href="book-appointment.php">Book Appointment</a>
-                <a href="my-appointments.php">My Appointments</a>
                 <a href="medical-records.php">Medical Records</a>
                 <a href="messages.php">Messages <?php if ($unread_messages > 0) echo "($unread_messages)"; ?></a>
                 <a href="profile.php">Profile</a>
@@ -94,7 +93,6 @@ $unread_messages = $conn->query("SELECT COUNT(*) as count FROM messages WHERE re
                                         <td><?php echo htmlspecialchars($appointment['specialty']); ?></td>
                                         <td><?php echo ucfirst($appointment['status']); ?></td>
                                         <td>
-                                            <a href="view-appointment.php?id=<?php echo $appointment['id']; ?>" class="btn btn-secondary btn-sm">View</a>
                                             <?php if ($appointment['status'] == 'pending' || $appointment['status'] == 'confirmed'): ?>
                                                 <button onclick="cancelAppointment(<?php echo $appointment['id']; ?>)" class="btn btn-danger btn-sm">Cancel</button>
                                             <?php endif; ?>

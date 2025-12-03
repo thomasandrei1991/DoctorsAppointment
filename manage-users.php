@@ -39,50 +39,66 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'delete':
-                if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
-                    // Start transaction
-                    $conn->begin_transaction();
+                // Start transaction
+                $conn->begin_transaction();
 
-                    try {
-                        // Delete from related tables first
-                        $tables = ['patients', 'doctors', 'appointments', 'messages', 'audit_logs', 'notifications'];
-                        foreach ($tables as $table) {
-                            $column = ($table === 'audit_logs' || $table === 'notifications') ? 'user_id' : 'user_id';
-                            $stmt = $conn->prepare("DELETE FROM $table WHERE $column = ?");
-                            $stmt->bind_param("i", $target_user_id);
-                            $stmt->execute();
-                            $stmt->close();
-                        }
+                try {
+                    // Get user role
+                    $stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+                    $stmt->bind_param("i", $target_user_id);
+                    $stmt->execute();
+                    $role_result = $stmt->get_result();
+                    $user_role = $role_result->fetch_assoc()['role'];
+                    $stmt->close();
 
-                        // Delete user
-                        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+                    // Delete from role-specific table
+                    if ($user_role === 'patient') {
+                        $stmt = $conn->prepare("DELETE FROM patients WHERE user_id = ?");
                         $stmt->bind_param("i", $target_user_id);
                         $stmt->execute();
                         $stmt->close();
-
-                        $conn->commit();
-                        log_action($user_id, 'delete_user', "Deleted user ID: $target_user_id");
-                        $success = 'User deleted successfully.';
-                    } catch (Exception $e) {
-                        $conn->rollback();
-                        $error = 'Failed to delete user.';
+                    } elseif ($user_role === 'doctor') {
+                        $stmt = $conn->prepare("DELETE FROM doctors WHERE user_id = ?");
+                        $stmt->bind_param("i", $target_user_id);
+                        $stmt->execute();
+                        $stmt->close();
                     }
-                } else {
-                    // Show confirmation form
-                    echo '<div class="modal" id="delete-modal" style="display: block;">
-                            <div class="modal-content">
-                                <span class="close" onclick="closeModal(\'delete-modal\')">&times;</span>
-                                <h3>Confirm Deletion</h3>
-                                <p>Are you sure you want to delete this user? This action cannot be undone.</p>
-                                <form method="POST" action="">
-                                    <input type="hidden" name="user_id" value="' . $target_user_id . '">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="confirm_delete" value="yes">
-                                    <button type="submit" class="btn btn-danger">Yes, Delete User</button>
-                                    <button type="button" class="btn btn-secondary" onclick="closeModal(\'delete-modal\')">Cancel</button>
-                                </form>
-                            </div>
-                          </div>';
+
+                    // Delete appointments (as patient or doctor)
+                    $stmt = $conn->prepare("DELETE FROM appointments WHERE patient_id = ? OR doctor_id = (SELECT id FROM doctors WHERE user_id = ?)");
+                    $stmt->bind_param("ii", $target_user_id, $target_user_id);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    // Delete messages
+                    $stmt = $conn->prepare("DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?");
+                    $stmt->bind_param("ii", $target_user_id, $target_user_id);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    // Delete audit logs and notifications
+                    $stmt = $conn->prepare("DELETE FROM audit_logs WHERE user_id = ?");
+                    $stmt->bind_param("i", $target_user_id);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    $stmt = $conn->prepare("DELETE FROM notifications WHERE user_id = ?");
+                    $stmt->bind_param("i", $target_user_id);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    // Delete user
+                    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+                    $stmt->bind_param("i", $target_user_id);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    $conn->commit();
+                    log_action($user_id, 'delete_user', "Deleted user ID: $target_user_id");
+                    $success = 'User deleted successfully.';
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $error = 'Failed to delete user: ' . $e->getMessage();
                 }
                 break;
         }

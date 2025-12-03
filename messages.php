@@ -45,14 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
 if ($user_role == 'doctor') {
     $stmt = $conn->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.role IN ('patient', 'admin') AND u.id != ?");
 } elseif ($user_role == 'patient') {
-    $stmt = $conn->prepare("
-        SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
-        FROM users u
-        JOIN doctors d ON u.id = d.user_id
-        JOIN appointments a ON d.id = a.doctor_id
-        JOIN patients p ON a.patient_id = p.id
-        WHERE p.user_id = ? AND u.id != ?
-    ");
+    $stmt = $conn->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.role IN ('doctor', 'admin') AND u.id != ?");
 } else {
     $stmt = $conn->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.id != ?");
 }
