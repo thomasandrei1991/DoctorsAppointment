@@ -32,25 +32,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $medical_history = sanitize_input($_POST['medical_history']);
     $allergies = sanitize_input($_POST['allergies']);
 
-    // Update users table
-    $stmt = $conn->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->bind_param("sssssi", $first_name, $last_name, $email, $phone, $user_id);
-    $stmt->execute();
-    $stmt->close();
+    try {
+        // Start transaction
+        $conn->begin_transaction();
 
-    // Update patients table
-    $stmt = $conn->prepare("UPDATE patients SET date_of_birth = ?, gender = ?, address = ?, emergency_contact_name = ?, emergency_contact_phone = ?, medical_history = ?, allergies = ? WHERE user_id = ?");
-    $stmt->bind_param("sssssssi", $date_of_birth, $gender, $address, $emergency_contact_name, $emergency_contact_phone, $medical_history, $allergies, $user_id);
-    $stmt->execute();
-    $stmt->close();
+        // Update users table
+        $stmt = $conn->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("sssssi", $first_name, $last_name, $email, $phone, $user_id);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update user information: " . $stmt->error);
+        }
+        $stmt->close();
 
-    $success = 'Profile updated successfully.';
-    // Refresh patient data
-    $stmt = $conn->prepare("SELECT p.*, u.first_name, u.last_name, u.email, u.phone FROM patients p JOIN users u ON p.user_id = u.id WHERE p.user_id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $patient = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+        // Update patients table
+        $stmt = $conn->prepare("UPDATE patients SET date_of_birth = ?, gender = ?, address = ?, emergency_contact_name = ?, emergency_contact_phone = ?, medical_history = ?, allergies = ? WHERE user_id = ?");
+        $stmt->bind_param("sssssssi", $date_of_birth, $gender, $address, $emergency_contact_name, $emergency_contact_phone, $medical_history, $allergies, $user_id);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update patient information: " . $stmt->error);
+        }
+        $stmt->close();
+
+        $conn->commit();
+        $success = 'Profile updated successfully.';
+
+        // Refresh patient data
+        $stmt = $conn->prepare("SELECT p.*, u.first_name, u.last_name, u.email, u.phone FROM patients p JOIN users u ON p.user_id = u.id WHERE p.user_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $patient = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        $error = $e->getMessage();
+    }
 }
 ?>
 
